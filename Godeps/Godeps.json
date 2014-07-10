@@ -1,0 +1,19 @@
+{
+	"ImportPath": "github.com/buildboxhq/agent-release",
+	"GoVersion": "go1.2.2",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Comment": "weekly-48",
+			"Rev": "6a3615e294b534a1c24cb5d3d7570fa8bbc30c99"
+		},
+		{
+			"ImportPath": "github.com/google/go-github/github",
+			"Rev": "3a1d485aee50f96ff27b57e70843101fa8f37403"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "ec0a78e0f4db229b7897be36596a8944230b857a"
+		}
+	]
+}
