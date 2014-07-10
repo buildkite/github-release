@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ var commandLineUsage = `github-release is a utility to create GitHub releases an
 Usage:
   $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \ # defaults to master
                                        --tag "1-0-0-stable" \ # defaults to the name of the release
-                                       --prerelease "true" \ # defaults to false
+                                       --prerelease \ # defaults to false
                                        --github-repository "your/repo" \
                                        --github-access-token [..]
 
@@ -44,7 +45,7 @@ type commandLineOptions struct {
 	GithubRepository  string `flag:"github-repository" env:"GITHUB_RELEASE_REPOSITORY" required:"true"`
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
 	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
-	Prerelease        string `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
+	Prerelease        bool   `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
 }
 
 func main() {
@@ -107,8 +108,15 @@ func parseArgs(opts *commandLineOptions, args []string) {
 	for i := 0; i < len(fields); i++ {
 		fieldName := fields[i]
 		flagName, _ := reflections.GetFieldTag(opts, fieldName, "flag")
+		fieldKind, _ := reflections.GetFieldKind(opts, fieldName)
 
-		flags.String(flagName, "", "")
+		if fieldKind == reflect.String {
+			flags.String(flagName, "", "")
+		} else if fieldKind == reflect.Bool {
+			flags.Bool(flagName, false, "")
+		} else {
+			exitAndError(fmt.Sprintf("Could not create flag for %s", fieldName))
+		}
 	}
 
 	// Define our custom usage text
@@ -138,6 +146,7 @@ func parseArgs(opts *commandLineOptions, args []string) {
 	// set them (or use the ENV variable if empty)
 	for i := 0; i < len(fields); i++ {
 		fieldName := fields[i]
+		fieldKind, _ := reflections.GetFieldKind(opts, fieldName)
 
 		// Grab the flags we need
 		flagName, _ := reflections.GetFieldTag(opts, fieldName, "flag")
@@ -157,7 +166,19 @@ func parseArgs(opts *commandLineOptions, args []string) {
 			exitAndError(fmt.Sprintf("missing %s", flagName))
 		}
 
-		reflections.SetField(opts, fieldName, value)
+		// Set the value in the right way
+		if fieldKind == reflect.String {
+			reflections.SetField(opts, fieldName, value)
+		} else if fieldKind == reflect.Bool {
+			// The bool is converted to a string above
+			if value == "true" {
+				reflections.SetField(opts, fieldName, true)
+			} else {
+				reflections.SetField(opts, fieldName, false)
+			}
+		} else {
+			exitAndError(fmt.Sprintf("Could not set value of %s", fieldName))
+		}
 	}
 }
 
@@ -167,7 +188,11 @@ func exitAndError(message interface{}) {
 }
 
 func release(releaseName string, releaseAssets []string, options *commandLineOptions) {
-	log.Printf("Creating release %s for repository: %s", releaseName, options.GithubRepository)
+	if options.Prerelease {
+		log.Printf("Creating prerelease %s for repository: %s", releaseName, options.GithubRepository)
+	} else {
+		log.Printf("Creating release %s for repository: %s", releaseName, options.GithubRepository)
+	}
 
 	// Split the repository into two parts (owner and repository)
 	repositoryParts := strings.Split(options.GithubRepository, "/")
@@ -179,12 +204,6 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	tagName := options.Tag
 	if tagName == "" {
 		tagName = releaseName
-	}
-
-	// Toggle prerelease
-	prerelease := false
-	if options.Prerelease == "true" {
-		prerelease = true
 	}
 
 	// log.Printf("%s", repos)
@@ -206,7 +225,7 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		Name:            &releaseName,
 		TagName:         &tagName,
 		TargetCommitish: &options.Commit,
-		Prerelease:      &prerelease,
+		Prerelease:      &options.Prerelease,
 	}
 
 	// Create the GitHub release

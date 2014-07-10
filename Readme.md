@@ -7,7 +7,7 @@ github-release is a utility to create GitHub releases and upload packages.
 ```bash
 $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \
                                      --tag "1-0-0-stable" \
-                                     --prerelease "true" \
+                                     --prerelease \
                                      --github-repository "your/repo" \
                                      --github-access-token [..]
 ```
