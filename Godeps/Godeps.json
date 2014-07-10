@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/buildboxhq/agent-release",
+	"ImportPath": "github.com/buildboxhq/github-release",
 	"GoVersion": "go1.2.2",
 	"Deps": [
 		{
@@ -14,6 +14,11 @@
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
 			"Rev": "ec0a78e0f4db229b7897be36596a8944230b857a"
+		},
+		{
+			"ImportPath": "github.com/oleiade/reflections",
+			"Comment": "0.1.2-2-g632977f",
+			"Rev": "632977f98cd34d217c4b57d0840ec188b3d3dcaf"
 		}
 	]
 }
