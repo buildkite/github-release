@@ -13,35 +13,58 @@ import (
 
 var commandLineName = "github-release"
 
+var commandLineUsage = `github-release is a utility to create GitHub releases and upload packages.
+
+Usage:
+  $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \ # defaults to master
+                                       --tag "1-0-0-stable" \ # defaults to the name of the release
+                                       --github-repository "your/repo" \
+                                       --github-access-token [..]
+
+Environment variables can also be used:
+
+  $ export GITHUB_RELEASE_ACCESS_TOKEN="..."
+  $ export GITHUB_RELEASE_REPOSITORY="..."
+  $ export GITHUB_RELEASE_TAG="..."
+  $ export GITHUB_RELEASE_COMMIT="..."
+  $ github-release "v1.0" pkg/*.tar.gz
+
+Help:
+  $ github-release --help
+
+See https://github.com/buildboxhq/github-release and the GitHub
+create release documentation https://developer.github.com/v3/repos/releases/#create-a-release
+for more information.`
+
 type commandLineOptions struct {
-	GithubAccessToken string `flag:"github-access-token" env:"GITHUB_RELEASE_ACCESS_TOKEN" required:true`
-	GithubRepository  string `flag:"github-repository" env:"GITHUB_RELEASE_REPOSITORY" required:true`
-	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG" required:false`
-	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT" required:false`
+	GithubAccessToken string `flag:"github-access-token" env:"GITHUB_RELEASE_ACCESS_TOKEN" required:"true"`
+	GithubRepository  string `flag:"github-repository" env:"GITHUB_RELEASE_REPOSITORY" required:"true"`
+	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
+	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
 }
 
 func main() {
-	if len(os.Args) <= 1 {
+	if len(os.Args) == 1 {
 		exitAndError("invalid usage")
 	}
 
-	// Grab our release anme and assets
-	releaseName := os.Args[1]
-	releaseAssets := collectReleaseAssets(os.Args[2:])
+	// Collect the release assets from the command line
+	releaseAssets := collectReleaseAssets(os.Args)
 
+	// Parse our command line options
 	options := commandLineOptions{}
+	parseArgs(&options, os.Args)
 
-	// Options will start the argument after the last asset
-	parseArgs(&options, os.Args[len(releaseAssets)+2:])
+	// Grab our release name. If it starts with a '--', then they haven't
+	// entered one.
+	releaseName := os.Args[1]
+	if strings.HasPrefix(releaseName, "--") {
+		exitAndError("invalid usage")
+	}
 
 	// fmt.Printf("name: %s\n", releaseName)
 	// fmt.Printf("assets: %s\n", releaseAssets)
 	// fmt.Printf("options: %s\n", options.GithubAccessToken)
-
-	// If no tag was provided, use the name of the release
-	if options.Tag == "" {
-		options.Tag = releaseName
-	}
 
 	// Finally do the release
 	release(releaseName, releaseAssets, &options)
@@ -67,6 +90,8 @@ func collectReleaseAssets(args []string) (files []string) {
 	return
 }
 
+// Reflects on the values in the commandLineOptions structure, and fills it
+// with values either from the command line, or from the ENV.
 func parseArgs(opts *commandLineOptions, args []string) {
 	// Create a flag set for args
 	flags := flag.NewFlagSet(commandLineName, flag.ExitOnError)
@@ -82,8 +107,28 @@ func parseArgs(opts *commandLineOptions, args []string) {
 		flags.String(flagName, "", "")
 	}
 
+	// Define our custom usage text
+	flags.Usage = func() {
+		fmt.Printf("%s\n", commandLineUsage)
+		os.Exit(0)
+	}
+
+	// Search the args until we find a "--", which signifies the user has started
+	// defining options.
+	var argumentFlags []string
+	started := false
+	for i := 0; i < len(args); i++ {
+		if strings.HasPrefix(args[i], "--") {
+			started = true
+		}
+
+		if started {
+			argumentFlags = append(argumentFlags, args[i])
+		}
+	}
+
 	// Now parse the flags
-	flags.Parse(args)
+	flags.Parse(argumentFlags)
 
 	// Now the flag set has been populated with values, retrieve them and
 	// set them (or use the ENV variable if empty)
@@ -118,12 +163,18 @@ func exitAndError(message interface{}) {
 }
 
 func release(releaseName string, releaseAssets []string, options *commandLineOptions) {
-	log.Printf("foo %s", options.GithubRepository)
+	log.Printf("Creating release %s for repository: %s", releaseName, options.GithubRepository)
 
 	// Split the repository into two parts (owner and repository)
 	repositoryParts := strings.Split(options.GithubRepository, "/")
 	if len(repositoryParts) != 2 {
 		exitAndError("github-repository is in the wrong format")
+	}
+
+	// If no tag was provided, use the name of the release
+	tag := options.Tag
+	if tag == "" {
+		tag = releaseName
 	}
 
 	// Create an oAuth transport
@@ -144,5 +195,5 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	log.Printf("name: %s", releaseName)
 	log.Printf("assets: %s", releaseAssets)
 	log.Printf("commit: %s", options.Commit)
-	log.Printf("tag: %s", options.Tag)
+	log.Printf("tag: %s", tag)
 }
