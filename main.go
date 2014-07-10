@@ -13,8 +13,9 @@ import (
 var AppHelpTemplate = `A utility to create GitHub releases and upload packages.
 
 Usage:
-  $ {{.Name}} "v1.0" --release-assets "pkg/*.tar.gz" \
-                          --release-commit "branch-or-sha" \ # defaults to master
+  $ {{.Name}} "v1.0" --assets "pkg/*.tar.gz" \
+                          --tag "1-0-stable" \ # defaults to name of release
+                          --commit "branch-or-sha" \ # defaults to master
                           --github-repository "your/repo" \
                           --github-access-token [..]
 
@@ -32,20 +33,26 @@ func main() {
 	app := cli.NewApp()
 	app.Name = AppName
 	app.Version = "0.1"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{"assets", "", ""},
+	}
 	app.Action = func(c *cli.Context) {
-		// There should be 2 args, the key and the value.
-		if len(c.Args()) != 1 {
-			exitAndError("missing release name")
-		}
-
 		// Grab the release name
-		releaseName := c.Args()[0]
+		releaseName := "foo"
+
+		// Validate that we have a release name. If they've entrered:
+		// github-release --foo, then args[0] will be --foo, which means
+		// no name is present.
+		// if len(c.Args()) == 0 || strings.HasPrefix(releaseName, "--") {
+		// 	exitAndError("missing release name")
+		// }
 
 		// Get arguments from either the command line or ENV
 		githubAccessToken := argumentOrEnv(c, "github-access-token", "GITHUB_RELEASE_ACCESS_TOKEN", true)
 		githubRepository := argumentOrEnv(c, "github-repository", "GITHUB_RELEASE_REPOSITORY", true)
-		releaseCommit := argumentOrEnv(c, "releaseCommit", "GITHUB_RELEASE_COMMIT", false)
-		releaseAssets := argumentOrEnv(c, "releaseAssets", "GITHUB_RELEASE_ASSETS", false)
+		releaseTag := argumentOrEnv(c, "tag", "GITHUB_RELEASE_TAG", false)
+		releaseCommit := argumentOrEnv(c, "commit", "GITHUB_RELEASE_COMMIT", false)
+		releaseAssets := argumentOrEnv(c, "assets", "GITHUB_RELEASE_ASSETS", false)
 
 		// Split the repository into two parts (owner and repository)
 		repositoryParts := strings.Split(githubRepository, "/")
@@ -53,7 +60,12 @@ func main() {
 			exitAndError("github-repository is in the wrong format")
 		}
 
-		release(githubAccessToken, repositoryParts[0], repositoryParts[1], releaseName, releaseCommit, releaseAssets)
+		// If no tag was provided, use the name of the release
+		if releaseTag == "" {
+			releaseTag = releaseName
+		}
+
+		release(githubAccessToken, repositoryParts[0], repositoryParts[1], releaseName, releaseTag, releaseCommit, releaseAssets)
 	}
 
 	app.Run(os.Args)
@@ -67,6 +79,8 @@ func exitAndError(message string) {
 func argumentOrEnv(c *cli.Context, argumentName string, argumentEnv string, required bool) string {
 	value := c.String(argumentName)
 
+	fmt.Printf("%s %s\n", argumentName, value)
+
 	if value == "" {
 		value = os.Getenv(argumentEnv)
 	}
@@ -78,7 +92,7 @@ func argumentOrEnv(c *cli.Context, argumentName string, argumentEnv string, requ
 	return value
 }
 
-func release(githubAccessToken string, githubOwner string, githubRepository string, releaseName string, releaseCommit string, releaseAssets string) {
+func release(githubAccessToken string, githubOwner string, githubRepository string, releaseName string, releaseTag string, releaseCommit string, releaseAssets string) {
 	// Create an oAuth transport
 	t := &oauth.Transport{
 		Token: &oauth.Token{AccessToken: githubAccessToken},
@@ -96,5 +110,6 @@ func release(githubAccessToken string, githubOwner string, githubRepository stri
 	log.Printf("%s", repos)
 	log.Printf("name: %s", releaseName)
 	log.Printf("commit: %s", releaseCommit)
+	log.Printf("tag: %s", releaseTag)
 	log.Printf("assets: %s", releaseAssets)
 }
