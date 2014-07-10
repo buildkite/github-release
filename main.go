@@ -18,6 +18,7 @@ var commandLineUsage = `github-release is a utility to create GitHub releases an
 Usage:
   $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \ # defaults to master
                                        --tag "1-0-0-stable" \ # defaults to the name of the release
+                                       --prerelease "true" \ # defaults to false
                                        --github-repository "your/repo" \
                                        --github-access-token [..]
 
@@ -27,6 +28,7 @@ Environment variables can also be used:
   $ export GITHUB_RELEASE_REPOSITORY="..."
   $ export GITHUB_RELEASE_TAG="..."
   $ export GITHUB_RELEASE_COMMIT="..."
+  $ export GITHUB_RELEASE_PRERELEASE="..."
   $ github-release "v1.0" pkg/*.tar.gz
 
 Help:
@@ -41,6 +43,7 @@ type commandLineOptions struct {
 	GithubRepository  string `flag:"github-repository" env:"GITHUB_RELEASE_REPOSITORY" required:"true"`
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
 	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
+	Prerelease        string `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
 }
 
 func main() {
@@ -172,10 +175,22 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	}
 
 	// If no tag was provided, use the name of the release
-	tag := options.Tag
-	if tag == "" {
-		tag = releaseName
+	tagName := options.Tag
+	if tagName == "" {
+		tagName = releaseName
 	}
+
+	// Toggle prerelease
+	prerelease := false
+	if options.Prerelease == "true" {
+		prerelease = true
+	}
+
+	// log.Printf("%s", repos)
+	// log.Printf("name: %s", releaseName)
+	// log.Printf("assets: %s", releaseAssets)
+	// log.Printf("commit: %s", options.Commit)
+	// log.Printf("tag: %s", tag)
 
 	// Create an oAuth transport
 	t := &oauth.Transport{
@@ -185,15 +200,19 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	// Create a GitHub client with the transport
 	client := github.NewClient(t.Client())
 
-	// List all repositories for the authenticated user
-	repos, _, err := client.Repositories.ListReleases(repositoryParts[0], repositoryParts[1], nil)
-	if err != nil {
-		log.Fatalf("Failed to get repos: %s", err)
+	// Create an object that represents the release
+	release := &github.RepositoryRelease{
+		Name:            &releaseName,
+		TagName:         &tagName,
+		TargetCommitish: &options.Commit,
+		Prerelease:      &prerelease,
 	}
 
-	log.Printf("%s", repos)
-	log.Printf("name: %s", releaseName)
-	log.Printf("assets: %s", releaseAssets)
-	log.Printf("commit: %s", options.Commit)
-	log.Printf("tag: %s", tag)
+	// Create the GitHub release
+	createdRelease, _, err := client.Repositories.CreateRelease(repositoryParts[0], repositoryParts[1], release)
+	if err != nil {
+		log.Fatalf("Failed to create release: %T %v", err, err)
+	}
+
+	log.Printf("Successfully created release: %s", github.Stringify(createdRelease.HTMLURL))
 }
