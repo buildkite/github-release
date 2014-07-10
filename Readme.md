@@ -2,7 +2,7 @@
 
 A command line utility to create GitHub releases and upload packages
 
-## Usage
+### Usage
 
 ```bash
 $ github-release "v1.0" "pkg/*.tar.gz" --github-repository "your/repo" --github-access-token [..]
