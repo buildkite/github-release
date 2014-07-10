@@ -8,6 +8,7 @@ import (
 	"github.com/oleiade/reflections"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// Collect the release assets from the command line
-	releaseAssets := collectReleaseAssets(os.Args)
+	releaseAssets := collectReleaseAssets(os.Args[1:])
 
 	// Parse our command line options
 	options := commandLineOptions{}
@@ -211,7 +212,27 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	// Create the GitHub release
 	createdRelease, _, err := client.Repositories.CreateRelease(repositoryParts[0], repositoryParts[1], release)
 	if err != nil {
-		log.Fatalf("Failed to create release: %T %v", err, err)
+		log.Fatalf("Failed to create release (%T %v)", err, err)
+	}
+
+	// log.Printf("DEBUG: %s", github.Stringify(createdRelease))
+
+	// Start uploading the assets
+	for i := 0; i < len(releaseAssets); i++ {
+		fileName := releaseAssets[i]
+
+		file, err := os.Open(fileName)
+		if err != nil {
+			log.Fatalf("Could not open file \"%s\" (%T %v)", fileName, err, err)
+		}
+
+		releaseAssetOptions := &github.UploadOptions{Name: filepath.Base(fileName)}
+		createdReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(repositoryParts[0], repositoryParts[1], *createdRelease.ID, releaseAssetOptions, file)
+		if err != nil {
+			log.Fatalf("Failed to upload asset \"%s\" (%T %v)", fileName, err, err)
+		}
+
+		log.Printf("Successfully uploaded asset: %s", github.Stringify(createdReleaseAsset.URL))
 	}
 
 	log.Printf("Successfully created release: %s", github.Stringify(createdRelease.HTMLURL))
