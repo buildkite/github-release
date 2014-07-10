@@ -15,6 +15,8 @@ import (
 
 var commandLineName = "github-release"
 
+var commandLineVersion = "0.1"
+
 var commandLineUsage = `github-release is a utility to create GitHub releases and upload packages.
 
 Usage:
@@ -32,6 +34,9 @@ Environment variables can also be used:
   $ export GITHUB_RELEASE_COMMIT="..."
   $ export GITHUB_RELEASE_PRERELEASE="..."
   $ github-release "v1.0" pkg/*.tar.gz
+
+Version:
+  $ github-release --version
 
 Help:
   $ github-release --help
@@ -51,6 +56,12 @@ type commandLineOptions struct {
 func main() {
 	if len(os.Args) == 1 {
 		exitAndError("invalid usage")
+	}
+
+	// Are they checking version?
+	if os.Args[1] == "--version" {
+		fmt.Printf("%s version %s\n", commandLineName, commandLineVersion)
+		os.Exit(0)
 	}
 
 	// Collect the release assets from the command line
@@ -122,7 +133,6 @@ func parseArgs(opts *commandLineOptions, args []string) {
 	// Define our custom usage text
 	flags.Usage = func() {
 		fmt.Printf("%s\n", commandLineUsage)
-		os.Exit(0)
 	}
 
 	// Search the args until we find a "--", which signifies the user has started
