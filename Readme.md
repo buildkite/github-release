@@ -17,4 +17,4 @@ export GITHUB_RELEASE_REPOSITORY="your/repo"
 $ github-release "v1.0" "pkg/*.tar.gz"
 ```
 
-For the GitHub access token, you can use a [Personal Access Token](https://github.com/settings/applications#personal-access-tokens)
+For the GitHub access token, you can use a [personal access token](https://github.com/settings/applications#personal-access-tokens)
