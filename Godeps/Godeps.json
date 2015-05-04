@@ -1,24 +1,27 @@
 {
-	"ImportPath": "github.com/buildboxhq/github-release",
-	"GoVersion": "go1.2.2",
+	"ImportPath": "github.com/buildkite/github-release",
+	"GoVersion": "go1.4.1",
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-48",
-			"Rev": "6a3615e294b534a1c24cb5d3d7570fa8bbc30c99"
-		},
-		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "3a1d485aee50f96ff27b57e70843101fa8f37403"
+			"Rev": "e8719935a2e4f057e2a767ddbcc023ac6facf07b"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
-			"Rev": "ec0a78e0f4db229b7897be36596a8944230b857a"
+			"Rev": "547ef5ac979778feb2f760cdb5f4eae1a2207b86"
 		},
 		{
 			"ImportPath": "github.com/oleiade/reflections",
 			"Comment": "0.1.2-2-g632977f",
 			"Rev": "632977f98cd34d217c4b57d0840ec188b3d3dcaf"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "a8c61998a557a37435f719980da368469c10bfed"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "ec6d5d770f531108a6464462b2201b74fcd09314"
 		}
 	]
 }

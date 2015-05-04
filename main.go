@@ -1,7 +1,7 @@
 package main
 
 import (
-	"code.google.com/p/goauth2/oauth"
+	"golang.org/x/oauth2"
 	"flag"
 	"fmt"
 	"github.com/google/go-github/github"
@@ -51,6 +51,16 @@ type commandLineOptions struct {
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
 	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
 	Prerelease        bool   `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
+}
+
+// tokenSource is an oauth2.TokenSource which returns a static access token
+type tokenSource struct {
+  token *oauth2.Token
+}
+
+// Token implements the oauth2.TokenSource interface
+func (t *tokenSource) Token() (*oauth2.Token, error){
+  return t.token, nil
 }
 
 func main() {
@@ -222,13 +232,16 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	// log.Printf("commit: %s", options.Commit)
 	// log.Printf("tag: %s", tag)
 
-	// Create an oAuth transport
-	t := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: options.GithubAccessToken},
-	}
+	// Create an oAuth Token Source
+	ts := &tokenSource{
+    &oauth2.Token{AccessToken: options.GithubAccessToken},
+  }
 
-	// Create a GitHub client with the transport
-	client := github.NewClient(t.Client())
+  // New oAuth client
+	tc := oauth2.NewClient(oauth2.NoContext, ts)
+
+	// Github Client
+  client := github.NewClient(tc)
 
 	// Create an object that represents the release
 	release := &github.RepositoryRelease{
