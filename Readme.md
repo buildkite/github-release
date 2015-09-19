@@ -34,7 +34,11 @@ direnv allow
 go run main.go --help
 ```
 
-## Contributing
+### Sponsor
+
+This project is developed and maintained by [http://buildkite.com](Buildkite)
+
+### Contributing
 
 1. Fork it
 2. Create your feature branch (`git checkout -b my-new-feature`)
@@ -42,6 +46,6 @@ go run main.go --help
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-## Copyright
+### Copyright
 
 Copyright (c) 2015 Keith Pitt, Tim Lucas, Buildkite Pty Ltd. See LICENSE for details.
