@@ -1,16 +1,17 @@
 package main
 
 import (
-	"golang.org/x/oauth2"
 	"flag"
 	"fmt"
-	"github.com/google/go-github/github"
-	"github.com/oleiade/reflections"
 	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/google/go-github/github"
+	"github.com/oleiade/reflections"
+	"golang.org/x/oauth2"
 )
 
 var commandLineName = "github-release"
@@ -41,7 +42,7 @@ Version:
 Help:
   $ github-release --help
 
-See https://github.com/buildboxhq/github-release and the GitHub
+See https://github.com/buildkite/github-release and the GitHub
 create release documentation https://developer.github.com/v3/repos/releases/#create-a-release
 for more information.`
 
@@ -55,12 +56,12 @@ type commandLineOptions struct {
 
 // tokenSource is an oauth2.TokenSource which returns a static access token
 type tokenSource struct {
-  token *oauth2.Token
+	token *oauth2.Token
 }
 
 // Token implements the oauth2.TokenSource interface
-func (t *tokenSource) Token() (*oauth2.Token, error){
-  return t.token, nil
+func (t *tokenSource) Token() (*oauth2.Token, error) {
+	return t.token, nil
 }
 
 func main() {
@@ -234,14 +235,14 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 
 	// Create an oAuth Token Source
 	ts := &tokenSource{
-    &oauth2.Token{AccessToken: options.GithubAccessToken},
-  }
+		&oauth2.Token{AccessToken: options.GithubAccessToken},
+	}
 
-  // New oAuth client
+	// New oAuth client
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
 
 	// Github Client
-  client := github.NewClient(tc)
+	client := github.NewClient(tc)
 
 	// Create an object that represents the release
 	release := &github.RepositoryRelease{
