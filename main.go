@@ -16,7 +16,7 @@ import (
 
 var commandLineName = "github-release"
 
-var commandLineVersion = "0.1"
+var commandLineVersion = "1.0"
 
 var commandLineUsage = `github-release is a utility to create GitHub releases and upload packages.
 
