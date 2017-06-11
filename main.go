@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -244,6 +245,8 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	// Github Client
 	client := github.NewClient(tc)
 
+	ctx := context.TODO()
+
 	// Create an object that represents the release
 	release := &github.RepositoryRelease{
 		Name:            &releaseName,
@@ -253,7 +256,7 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	}
 
 	// Create the GitHub release
-	createdRelease, _, err := client.Repositories.CreateRelease(repositoryParts[0], repositoryParts[1], release)
+	createdRelease, _, err := client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
 	if err != nil {
 		log.Fatalf("Failed to create release (%T %v)", err, err)
 	}
@@ -270,7 +273,7 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		}
 
 		releaseAssetOptions := &github.UploadOptions{Name: filepath.Base(fileName)}
-		createdReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(repositoryParts[0], repositoryParts[1], *createdRelease.ID, releaseAssetOptions, file)
+		createdReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(ctx,repositoryParts[0], repositoryParts[1], *createdRelease.ID, releaseAssetOptions, file)
 		if err != nil {
 			log.Fatalf("Failed to upload asset \"%s\" (%T %v)", fileName, err, err)
 		}
