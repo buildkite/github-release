@@ -11,18 +11,20 @@ go_pkg="github.com/buildkite/github-release"
 rm -rf dist
 mkdir -p dist
 
-run_in_docker() {
+go_build_in_docker() {
   docker run \
     -v "${PWD}:/go/src/${go_pkg}" \
     -w "/go/src/${go_pkg}" \
-    -e "GOOS=${GOOS}" -e "GOARCH=${GOARCH}" \
+    -e "GOOS=${GOOS}" -e "GOARCH=${GOARCH}" -e "CGO_ENABLED=0" \
     --rm "golang:${go_version}" \
-    "$@"
+    go build "$@"
 }
 
 echo "+++ Building github-release for $GOOS/$GOARCH with golang:${go_version} :golang:"
 
-run_in_docker go build -o "${DISTFILE}" main.go
+go_build_in_docker -a -tags netgo -ldflags '-w' -o "${DISTFILE}" main.go
+file "${DISTFILE}"
+
 chmod +x "${DISTFILE}"
 echo "👍 ${DISTFILE}"
 
