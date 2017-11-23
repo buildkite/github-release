@@ -1,0 +1,5 @@
+builder:
+  image: golang:1.9.2
+  working_dir: /go/src/github.com/buildkite/github-release
+  volumes:
+    - ./:/go/src/github.com/buildkite/github-release

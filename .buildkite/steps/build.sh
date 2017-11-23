@@ -1,3 +1,6 @@
+#!/bin/bash
+set -eu
+
 echo "Building github-release 💨"
 echo ""
 
@@ -5,7 +8,7 @@ rm -rf dist
 mkdir -p dist
 
 echo "Compiling for OSX"
-GOOS=darwin GOARCH=amd64 go build -o dist/github-release-darwin-amd64 main.go
+docker-compose env GOOS=darwin GOARCH=amd64 go build -o dist/github-release-darwin-amd64 main.go
 chmod +x dist/github-release-darwin-amd64
 echo "👍  dist/github-release-darwin-amd64"
 echo ""

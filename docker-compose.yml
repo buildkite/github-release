@@ -1,6 +1,4 @@
 github-release:
   build: .
-  volumes:
-    - ./:/go/src/github.com/buildkite/terminal
   environment:
     - GITHUB_RELEASE_ACCESS_TOKEN

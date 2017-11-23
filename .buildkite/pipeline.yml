@@ -1,0 +1,14 @@
+steps:
+  - name: ":build: darwin/amd64"
+    command: scripts/build.sh darwin amd64
+    plugins:
+      docker-compose#v1.7.0:
+        config: docker-compose.build.yml
+        run: builder
+
+  - name: ":build: linux/amd64"
+    command: scripts/build.sh linux amd64
+    plugins:
+      docker-compose#v1.7.0:
+        config: docker-compose.build.yml
+        run: builder
