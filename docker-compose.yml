@@ -1,0 +1,12 @@
+version: '2.1'
+
+services:
+  github-release:
+    image: buildkite/github-release
+    build: .
+    environment:
+      - GITHUB_RELEASE_ACCESS_TOKEN
+      - GITHUB_RELEASE_REPOSITORY
+      - GITHUB_RELEASE_TAG
+      - GITHUB_RELEASE_COMMIT
+      - GITHUB_RELEASE_PRERELEASE
