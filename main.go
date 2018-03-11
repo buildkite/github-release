@@ -25,6 +25,7 @@ Usage:
   $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \ # defaults to master
                                        --tag "1-0-0-stable" \ # defaults to the name of the release
                                        --prerelease \ # defaults to false
+                                       --replace \ # defaults to false
                                        --github-repository "your/repo" \
                                        --github-access-token [..]
 
@@ -35,6 +36,7 @@ Environment variables can also be used:
   $ export GITHUB_RELEASE_TAG="..."
   $ export GITHUB_RELEASE_COMMIT="..."
   $ export GITHUB_RELEASE_PRERELEASE="..."
+  $ export GITHUB_RELEASE_REPLACE="..."
   $ github-release "v1.0" pkg/*.tar.gz
 
 Version:
@@ -53,6 +55,7 @@ type commandLineOptions struct {
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
 	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
 	Prerelease        bool   `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
+	Replace           bool   `flag:"replace" env:"GITHUB_RELEASE_REPLACE"`
 }
 
 // tokenSource is an oauth2.TokenSource which returns a static access token
@@ -210,10 +213,14 @@ func exitAndError(message interface{}) {
 }
 
 func release(releaseName string, releaseAssets []string, options *commandLineOptions) {
+	action := "Creating"
+	if options.Replace {
+		action = "Creating/replacing"
+	}
 	if options.Prerelease {
-		log.Printf("Creating prerelease %s for repository: %s", releaseName, options.GithubRepository)
+		log.Printf("%s prerelease %s for repository: %s", action, releaseName, options.GithubRepository)
 	} else {
-		log.Printf("Creating release %s for repository: %s", releaseName, options.GithubRepository)
+		log.Printf("%s release %s for repository: %s", action, releaseName, options.GithubRepository)
 	}
 
 	// Split the repository into two parts (owner and repository)
@@ -255,13 +262,30 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		Prerelease:      &options.Prerelease,
 	}
 
+	var targetRelease *github.RepositoryRelease
+	var err error
+
 	// Create the GitHub release
-	createdRelease, _, err := client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
+	targetRelease, _, err = client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
 	if err != nil {
-		log.Fatalf("Failed to create release (%T %v)", err, err)
+		if !options.Replace {
+			log.Fatalf("Failed to create release (%T %v)", err, err)
+		} else {
+			targetRelease, _, err = client.Repositories.GetReleaseByTag(ctx, repositoryParts[0], repositoryParts[1], *release.TagName)
+			if err != nil {
+				log.Fatalf("Failed to locate release (%T %v)", err, err)
+			}
+			log.Printf("Deleting existing assets for release: %s", releaseName)
+			for asset := range targetRelease.Assets {
+				_, err := client.Repositories.DeleteReleaseAsset(ctx, repositoryParts[0], repositoryParts[1], *targetRelease.Assets[asset].ID)
+				if err != nil {
+					log.Fatalf("Failed to delete all assets for release: (%T %v)", err, err)
+				}
+			}
+		}
 	}
 
-	// log.Printf("DEBUG: %s", github.Stringify(createdRelease))
+	// log.Printf("DEBUG: %s", github.Stringify(targetRelease))
 
 	// Start uploading the assets
 	for i := 0; i < len(releaseAssets); i++ {
@@ -273,13 +297,13 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		}
 
 		releaseAssetOptions := &github.UploadOptions{Name: filepath.Base(fileName)}
-		createdReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(ctx,repositoryParts[0], repositoryParts[1], *createdRelease.ID, releaseAssetOptions, file)
+		targetReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(ctx, repositoryParts[0], repositoryParts[1], *targetRelease.ID, releaseAssetOptions, file)
 		if err != nil {
 			log.Fatalf("Failed to upload asset \"%s\" (%T %v)", fileName, err, err)
 		}
 
-		log.Printf("Successfully uploaded asset: %s", github.Stringify(createdReleaseAsset.URL))
+		log.Printf("Successfully uploaded asset: %s", github.Stringify(targetReleaseAsset.URL))
 	}
 
-	log.Printf("Successfully created release: %s", github.Stringify(createdRelease.HTMLURL))
+	log.Printf("Successfully created release: %s", github.Stringify(targetRelease.HTMLURL))
 }
