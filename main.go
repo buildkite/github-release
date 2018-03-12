@@ -265,6 +265,31 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	var targetRelease *github.RepositoryRelease
 	var err error
 
+	// Create or update ref (tag) if needed
+	if options.Replace && options.Commit != "" {
+		tagRef := "refs/tags/" + tagName
+		log.Printf("Creating/updating tag: %s", tagName)
+		ref, _, err := client.Git.GetRef(ctx, repositoryParts[0], repositoryParts[1], tagRef)
+		if err == nil {
+			ref.Object.SHA = &options.Commit
+			_, _, err := client.Git.UpdateRef(ctx, repositoryParts[0], repositoryParts[1], ref, true)
+			if err != nil {
+				log.Fatalf("Unable to update ref %s (%T %v)", tagName, err, err)
+			}
+		} else {
+			ref = &github.Reference{
+				Ref: &tagRef,
+				Object: &github.GitObject{
+					SHA: &options.Commit,
+				},
+			}
+			_, _, err := client.Git.CreateRef(ctx, repositoryParts[0], repositoryParts[1], ref)
+			if err != nil {
+				log.Fatalf("Unable to create ref %s (%T %v)", tagName, err, err)
+			}
+		}
+	}
+
 	// Create the GitHub release
 	targetRelease, _, err = client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
 	if err != nil {
