@@ -287,29 +287,31 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	// Create or update ref (tag)
 	tagRef := "refs/tags/" + tagName
 	if relExists {
-		log.Printf("Updating tag: %s", tagName)
+		log.Printf("Deleting existing tag: %s", tagName)
 		ref, _, err := client.Git.GetRef(ctx, repositoryParts[0], repositoryParts[1], tagRef)
 		if err == nil {
 			ref.Object.SHA = &options.Commit
-			_, _, err := client.Git.UpdateRef(ctx, repositoryParts[0], repositoryParts[1], ref, true)
+			empty := ""
+			ref.Object.URL = &empty
+			log.Printf("Tag ref: %s %T %v", tagName, ref, ref)
+			_, err := client.Git.DeleteRef(ctx, repositoryParts[0], repositoryParts[1], tagRef)
 			if err != nil {
-				log.Fatalf("Unable to update ref %s (%T %v)", tagName, err, err)
+				log.Fatalf("Unable to delete ref %s (%T %v)", tagName, err, err)
 			}
 		} else {
 			log.Fatalf("Error getting tag ref for release (%T v)", err, err)
 		}
-	} else {
-		log.Printf("Creating tag: %s", tagName)
-		ref := &github.Reference{
-			Ref: &tagRef,
-			Object: &github.GitObject{
-				SHA: &options.Commit,
-			},
-		}
-		_, _, err := client.Git.CreateRef(ctx, repositoryParts[0], repositoryParts[1], ref)
-		if err != nil {
-			log.Fatalf("Unable to create ref %s (%T %v)", tagName, err, err)
-		}
+	}
+	log.Printf("Creating tag: %s", tagName)
+	ref := &github.Reference{
+		Ref: &tagRef,
+		Object: &github.GitObject{
+			SHA: &options.Commit,
+		},
+	}
+	_, _, err = client.Git.CreateRef(ctx, repositoryParts[0], repositoryParts[1], ref)
+	if err != nil {
+		log.Fatalf("Unable to create ref %s (%T %v)", tagName, err, err)
 	}
 
 	// Create the GitHub release
