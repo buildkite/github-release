@@ -5,11 +5,14 @@
 ### Usage
 
 ```bash
-$ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \
-                                     --tag "1-0-0-stable" \
-                                     --prerelease \
-                                     --github-repository "your/repo" \
-                                     --github-access-token [..]
+$ github-release <release name> <fileglob> \
+    --target <target> \ # defaults to master, for release commitish
+    --commit <sha> \ # commit hash for tag ref
+    --tag <tag> \ # defaults to the name of the release
+    --prerelease \ # defaults to false
+    --update \ # update if release exists, defaults to false
+    --github-repository <userorg/repo> \
+    --github-access-token <token>
 ```
 
 Environment variables can also be used:
@@ -18,8 +21,10 @@ Environment variables can also be used:
 $ export GITHUB_RELEASE_ACCESS_TOKEN="..."
 $ export GITHUB_RELEASE_REPOSITORY="..."
 $ export GITHUB_RELEASE_TAG="..."
+$ export GITHUB_RELEASE_TARGET="..."
 $ export GITHUB_RELEASE_COMMIT="..."
 $ export GITHUB_RELEASE_PRERELEASE="..."
+$ export GITHUB_RELEASE_UPDATE="..."
 $ github-release "v1.0" pkg/*.tar.gz
 ```
 
@@ -49,3 +54,4 @@ This project is developed and maintained by [http://buildkite.com](Buildkite)
 ### Copyright
 
 Copyright (c) 2015 Keith Pitt, Tim Lucas, Buildkite Pty Ltd. See LICENSE for details.
+Copyright (c) 2018 David Parsley
