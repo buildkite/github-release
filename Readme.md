@@ -54,4 +54,3 @@ This project is developed and maintained by [http://buildkite.com](Buildkite)
 ### Copyright
 
 Copyright (c) 2015 Keith Pitt, Tim Lucas, Buildkite Pty Ltd. See LICENSE for details.
-Copyright (c) 2018 David Parsley
