@@ -36,7 +36,7 @@ go run main.go --help
 
 ### Sponsor
 
-This project is developed and maintained by [http://buildkite.com](Buildkite)
+This project is developed and maintained by [Buildkite](https://buildkite.com)
 
 ### Contributing
 
