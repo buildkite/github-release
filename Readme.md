@@ -8,6 +8,7 @@
 $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \
                                      --tag "1-0-0-stable" \
                                      --prerelease \
+                                     --draft \
                                      --github-repository "your/repo" \
                                      --github-access-token [..]
 ```
@@ -20,6 +21,7 @@ $ export GITHUB_RELEASE_REPOSITORY="..."
 $ export GITHUB_RELEASE_TAG="..."
 $ export GITHUB_RELEASE_COMMIT="..."
 $ export GITHUB_RELEASE_PRERELEASE="..."
+$ export GITHUB_RELEASE_DRAFT="..."
 $ github-release "v1.0" pkg/*.tar.gz
 ```
 

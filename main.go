@@ -53,6 +53,7 @@ type commandLineOptions struct {
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
 	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
 	Prerelease        bool   `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
+	Draft             bool   `flag:"draft" env:"GITHUB_RELEASE_DRAFT"`
 }
 
 // tokenSource is an oauth2.TokenSource which returns a static access token
@@ -253,6 +254,7 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		TagName:         &tagName,
 		TargetCommitish: &options.Commit,
 		Prerelease:      &options.Prerelease,
+    Draft:           &options.Draft,
 	}
 
 	// Create the GitHub release
