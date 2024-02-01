@@ -1,5 +1,8 @@
 # github-release
 
+> [!WARNING]  
+> `github-release` is deprecated. We recommend creating GitHub releases with [the `gh` CLI tool](https://github.com/cli/cli).
+
 `github-release` is a utility to create GitHub releases and upload packages.
 
 ### Usage
