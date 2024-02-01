@@ -22,19 +22,24 @@ var commandLineVersion = "1.0"
 var commandLineUsage = `github-release is a utility to create GitHub releases and upload packages.
 
 Usage:
-  $ github-release "v1.0" pkg/*.tar.gz --commit "branch-or-sha" \ # defaults to master
-                                       --tag "1-0-0-stable" \ # defaults to the name of the release
-                                       --prerelease \ # defaults to false
-                                       --github-repository "your/repo" \
-                                       --github-access-token [..]
+  $ github-release <release name> <fileglob> \
+        --target <target> \ # defaults to master, for release commitish
+        --commit <sha> \ # commit hash for tag ref
+        --tag <tag> \ # defaults to the name of the release
+        --prerelease \ # defaults to false
+        --update \ # update if release exists, defaults to false
+        --github-repository <userorg/repo> \
+        --github-access-token <token>
 
 Environment variables can also be used:
 
   $ export GITHUB_RELEASE_ACCESS_TOKEN="..."
   $ export GITHUB_RELEASE_REPOSITORY="..."
   $ export GITHUB_RELEASE_TAG="..."
+  $ export GITHUB_RELEASE_TARGET="..."
   $ export GITHUB_RELEASE_COMMIT="..."
   $ export GITHUB_RELEASE_PRERELEASE="..."
+  $ export GITHUB_RELEASE_UPDATE="..."
   $ github-release "v1.0" pkg/*.tar.gz
 
 Version:
@@ -51,8 +56,10 @@ type commandLineOptions struct {
 	GithubAccessToken string `flag:"github-access-token" env:"GITHUB_RELEASE_ACCESS_TOKEN" required:"true"`
 	GithubRepository  string `flag:"github-repository" env:"GITHUB_RELEASE_REPOSITORY" required:"true"`
 	Tag               string `flag:"tag" env:"GITHUB_RELEASE_TAG"`
-	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT"`
+	Target            string `flag:"target" env:"GITHUB_RELEASE_TARGET"`
+	Commit            string `flag:"commit" env:"GITHUB_RELEASE_COMMIT" required: "true"`
 	Prerelease        bool   `flag:"prerelease" env:"GITHUB_RELEASE_PRERELEASE"`
+	Update            bool   `flag:"update" env:"GITHUB_RELEASE_UPDATE"`
 }
 
 // tokenSource is an oauth2.TokenSource which returns a static access token
@@ -210,10 +217,14 @@ func exitAndError(message interface{}) {
 }
 
 func release(releaseName string, releaseAssets []string, options *commandLineOptions) {
+	action := "Creating"
+	if options.Update {
+		action = "Creating/replacing"
+	}
 	if options.Prerelease {
-		log.Printf("Creating prerelease %s for repository: %s", releaseName, options.GithubRepository)
+		log.Printf("%s prerelease %s for repository: %s", action, releaseName, options.GithubRepository)
 	} else {
-		log.Printf("Creating release %s for repository: %s", releaseName, options.GithubRepository)
+		log.Printf("%s release %s for repository: %s", action, releaseName, options.GithubRepository)
 	}
 
 	// Split the repository into two parts (owner and repository)
@@ -226,6 +237,10 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 	tagName := options.Tag
 	if tagName == "" {
 		tagName = releaseName
+	}
+	target := options.Target
+	if target == "" {
+		target = "master"
 	}
 
 	// log.Printf("%s", repos)
@@ -247,21 +262,82 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 
 	ctx := context.TODO()
 
-	// Create an object that represents the release
-	release := &github.RepositoryRelease{
-		Name:            &releaseName,
-		TagName:         &tagName,
-		TargetCommitish: &options.Commit,
-		Prerelease:      &options.Prerelease,
+	var release *github.RepositoryRelease
+	var err error
+
+	relExists := false
+	finished := "created"
+	release, _, err = client.Repositories.GetReleaseByTag(ctx, repositoryParts[0], repositoryParts[1], tagName)
+	if err == nil && !options.Update {
+		log.Fatalf("Release \"%s\" already exists, pass --update to update")
+	}
+	if err != nil {
+		// Create an object that represents the release
+		release = &github.RepositoryRelease{
+			Name:            &releaseName,
+			TagName:         &tagName,
+			TargetCommitish: &target,
+			Prerelease:      &options.Prerelease,
+		}
+	} else {
+		relExists = true
+		finished = "updated"
+	}
+
+	// Create or update ref (tag)
+	tagRef := "refs/tags/" + tagName
+	if relExists {
+		log.Printf("Deleting existing tag: %s", tagName)
+		ref, _, err := client.Git.GetRef(ctx, repositoryParts[0], repositoryParts[1], tagRef)
+		if err == nil {
+			ref.Object.SHA = &options.Commit
+			empty := ""
+			ref.Object.URL = &empty
+			log.Printf("Tag ref: %s %T %v", tagName, ref, ref)
+			_, err := client.Git.DeleteRef(ctx, repositoryParts[0], repositoryParts[1], tagRef)
+			if err != nil {
+				log.Fatalf("Unable to delete ref %s (%T %v)", tagName, err, err)
+			}
+		} else {
+			log.Fatalf("Error getting tag ref for release (%T v)", err, err)
+		}
+	}
+	log.Printf("Creating tag: %s", tagName)
+	ref := &github.Reference{
+		Ref: &tagRef,
+		Object: &github.GitObject{
+			SHA: &options.Commit,
+		},
+	}
+	_, _, err = client.Git.CreateRef(ctx, repositoryParts[0], repositoryParts[1], ref)
+	if err != nil {
+		log.Fatalf("Unable to create ref %s (%T %v)", tagName, err, err)
 	}
 
 	// Create the GitHub release
-	createdRelease, _, err := client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
-	if err != nil {
-		log.Fatalf("Failed to create release (%T %v)", err, err)
+	if relExists {
+		release, _, err = client.Repositories.EditRelease(ctx, repositoryParts[0], repositoryParts[1], *release.ID, release)
+		if err != nil {
+			log.Fatalf("Error updating release (%T %v), err, err")
+		}
+	} else {
+		release, _, err = client.Repositories.CreateRelease(ctx, repositoryParts[0], repositoryParts[1], release)
+		if err != nil {
+			log.Fatalf("Error updating release (%T %v), err, err")
+		}
 	}
 
-	// log.Printf("DEBUG: %s", github.Stringify(createdRelease))
+	if relExists {
+		log.Printf("Deleting existing assets for release: %s", releaseName)
+		for asset := range release.Assets {
+			_, err := client.Repositories.DeleteReleaseAsset(ctx, repositoryParts[0], repositoryParts[1], *release.Assets[asset].ID)
+			if err != nil {
+				log.Fatalf("Failed to delete all assets for release: (%T %v)", err, err)
+			}
+		}
+	}
+
+	// log.Printf("DEBUG: %s", github.Stringify(release))
 
 	// Start uploading the assets
 	for i := 0; i < len(releaseAssets); i++ {
@@ -273,13 +349,13 @@ func release(releaseName string, releaseAssets []string, options *commandLineOpt
 		}
 
 		releaseAssetOptions := &github.UploadOptions{Name: filepath.Base(fileName)}
-		createdReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(ctx,repositoryParts[0], repositoryParts[1], *createdRelease.ID, releaseAssetOptions, file)
+		targetReleaseAsset, _, err := client.Repositories.UploadReleaseAsset(ctx, repositoryParts[0], repositoryParts[1], *release.ID, releaseAssetOptions, file)
 		if err != nil {
 			log.Fatalf("Failed to upload asset \"%s\" (%T %v)", fileName, err, err)
 		}
 
-		log.Printf("Successfully uploaded asset: %s", github.Stringify(createdReleaseAsset.URL))
+		log.Printf("Successfully uploaded asset: %s", github.Stringify(targetReleaseAsset.URL))
 	}
 
-	log.Printf("Successfully created release: %s", github.Stringify(createdRelease.HTMLURL))
+	log.Printf("Successfully %s release: %s", finished, github.Stringify(release.HTMLURL))
 }
